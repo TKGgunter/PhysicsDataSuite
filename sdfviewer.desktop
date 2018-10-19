@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SdfViewer
+GenericName=SDF Viewer
+Comment=view sdf file
+Exec=/home/tgunter/C++/x11/sdfviewer
+Icon=/home/tgunter/C++/x11/sdfviewer.png
+Categories=Utility;Application;
+Terminal=true
