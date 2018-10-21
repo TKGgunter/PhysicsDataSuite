@@ -782,23 +782,21 @@ void set_icon( TGBmp bmp )
 
     //TODO
     //Fix reflection
-    for(int i = height-1; i > -1; i--){
-        for(int j = 0; j < width; j++){
-            uint32_t pixel = ((uint32_t*)&bmp.pixeldata.data[0])[i * height + j]; 
-            uint32_t _pixel = 0;
+    for(int i = bmp.pixeldata.data.size()/4 - 1; i > -1; i--){
+        uint32_t pixel = ((uint32_t*)&bmp.pixeldata.data[0])[i]; 
+        uint32_t _pixel = 0;
 
-            uint8_t a = ((uint8_t*)&pixel)[0];
-            uint8_t r = ((uint8_t*)&pixel)[1];
-            uint8_t g = ((uint8_t*)&pixel)[2];
-            uint8_t b = ((uint8_t*)&pixel)[3];
+        uint8_t a = ((uint8_t*)&pixel)[0];
+        uint8_t r = ((uint8_t*)&pixel)[1];
+        uint8_t g = ((uint8_t*)&pixel)[2];
+        uint8_t b = ((uint8_t*)&pixel)[3];
 
-            ((uint8_t*)&_pixel)[0] = r;
-            ((uint8_t*)&_pixel)[1] = g;
-            ((uint8_t*)&_pixel)[2] = b;
-            ((uint8_t*)&_pixel)[3] = a;
+        ((uint8_t*)&_pixel)[0] = r;
+        ((uint8_t*)&_pixel)[1] = g;
+        ((uint8_t*)&_pixel)[2] = b;
+        ((uint8_t*)&_pixel)[3] = a;
 
-            _buffer.push_back(_pixel);
-        }
+        _buffer.push_back(_pixel);
     }
 
     int length = 2 + width * height;
