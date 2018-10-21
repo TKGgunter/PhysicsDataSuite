@@ -79,44 +79,8 @@ struct  TGBmpheader{
     uint32_t reserved;
     uint32_t data_offset;
 };
-
-struct  TGBmpDIB{
-    uint32_t size;
-    uint32_t width;
-    uint32_t height;
-    uint16_t plane;
-    uint16_t bits_per_pixel;
-    uint32_t compression;
-    uint32_t horizontal_res;
-    uint32_t vertical_res;
-    uint32_t colors_used;
-    uint32_t important_colors;
-};
-struct  TGPixelData{
-    std::vector<uint8_t> data;    
-};
-struct TGColor{
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-    uint8_t reserved;
-};
-struct  TGColorTable{
-    std::vector<TGColor> data;    
-};
-
-struct TGBmp{
-    TGBmpheader header;
-    TGBmpDIB dib;
-    TGColorTable color_table;
-    TGPixelData pixeldata;
-};
-
 int load_bmpheader(const char* buffer, TGBmpheader* header);
-int load_bmpdib(const char* buffer, TGBmpDIB* dib);
-void load_pixeldata( const char* buffer_start, const char* buffer_end, TGPixelData* pixeldata, TGBmpheader header);
-int load_bmp(const char* buffer_start, const char* buffer_end, TGBmp* bmp);
-void set_icon(TGBmp bmp);
+
 
 //GLOBAL
 /* here are our X variables */
@@ -186,9 +150,9 @@ int main (int n_command_line_args, char** argv) {
 
     //TODO
     //BMP test
+    TGBmpheader bmpheader;
+    load_bmpheader( &_binary_sdfviewer_bmp_start, &bmpheader);
 
-    TGBmp bmp;
-    load_bmp(&_binary_sdfviewer_bmp_start, &_binary_sdfviewer_bmp_end, &bmp);
 
 
     //NOTE
@@ -242,7 +206,6 @@ int main (int n_command_line_args, char** argv) {
 		int plot_bound_height = window_height - plot_bound_y - 50;
 
 		init_x();
-    set_icon( bmp );
 
 		/* look for events forever... */
 		while(1) {		
@@ -715,99 +678,63 @@ void redraw() {
 //NOTE
 //The following was derived in part from
 //https://stackoverflow.com/questions/10699927/xlib-argb-window-icon/10714086#10714086
-
-
+struct  TGBmpDIB{
+    uint32_t size;
+    uint32_t width;
+    uint32_t height;
+    uint16_t plane;
+    uint16_t bits_per_pixel;
+    uint32_t compression;
+    uint32_t horizontal_res;
+    uint32_t vertical_res;
+    uint32_t colors_used;
+    uint32_t important_colors;
+};
+struct TGColor{
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+    uint8_t reserved;
+};
+struct  TGColorTable{
+    std::vector<TGColor> data;    
+};
+struct  TGPixelData{
+    std::vector<unsigned int8_t> data;    
+};
+struct TGBmp{
+    TGBmpheader header;
+    TGBmpDIB dib;
+    TGColorTable color_table;
+    TGPixelData pixel_data;
+};
 int load_bmpheader(const char* buffer, TGBmpheader* header){
     if (buffer[0] != 'B' || buffer[1] != 'M') return -1;
     header->signature[0] = buffer[0];
     header->signature[1] = buffer[1];
+    //TODO
+    //This is not right
+    //The index does not make any sense 
     header->file_size   = ((uint32_t*) &buffer[2])[0];
     header->reserved    = ((uint32_t*) &buffer[2])[1];
     header->data_offset = ((uint32_t*) &buffer[2])[2];
     return 0;
 };
-
 int load_bmpdib(const char* buffer, TGBmpDIB* dib){
-    int index = 14;
-    dib->size   = ((uint32_t*) &buffer[index])[0];
-    dib->width  = ((uint32_t*) &buffer[index])[1];
-    dib->height = ((uint32_t*) &buffer[index])[2];
-
-    dib->plane          = ((uint16_t*) &buffer[index + 3*4])[0];
-    dib->bits_per_pixel = ((uint16_t*) &buffer[index + 3*4])[1];
-
-    dib->compression         = ((uint32_t*) &buffer[index])[4];
-    dib->horizontal_res      = ((uint32_t*) &buffer[index])[5];
-    dib->vertical_res        = ((uint32_t*) &buffer[index])[6];
-    dib->colors_used         = ((uint32_t*) &buffer[index])[7];
-    dib->important_colors    = ((uint32_t*) &buffer[index])[8];
-
     return 0;
 };
 
-void load_pixeldata( const char* buffer_start, const char* buffer_end, TGPixelData* pixeldata, TGBmpheader header){
-    pixeldata->data.insert(pixeldata->data.end(), (uint8_t*)(&buffer_start[header.data_offset]), (uint8_t*)buffer_end);
+/*
+void bmp_from_buffer( char* buffer, TGBmp bmp){
 };
-
-int load_bmp(const char* buffer_start, const char* buffer_end, TGBmp* bmp){
-    int rt = 0;
-    TGBmpheader bmpheader;
-    rt = load_bmpheader( buffer_start, &bmpheader);
-    
-    if (rt != 0) return rt;
-
-    TGBmpDIB dib;
-    load_bmpdib( buffer_start, &dib);
-
-    load_pixeldata( buffer_start, buffer_end, &bmp->pixeldata, bmpheader);
-
-    bmp->header = bmpheader;
-    bmp->dib = dib;
-
-    return rt;
-};
-
-void set_icon( TGBmp bmp )
+void set_icon()
 {
-
+    unsigned long buffer[100]; 
     Atom net_wm_icon = XInternAtom(dis, "_NET_WM_ICON", False);
-    Atom cardinal = XInternAtom(dis, "CARDINAL", False);
-
-    std::vector<unsigned long int> _buffer;
-    unsigned long int width  =  bmp.dib.width;
-    unsigned long int height =  bmp.dib.height;
-
-    _buffer.push_back( width );
-    _buffer.push_back( height );
-
-    //TODO
-    //Fix reflection
-    for(int i = bmp.pixeldata.data.size()/4 - 1; i > -1; i--){
-        uint32_t pixel = ((uint32_t*)&bmp.pixeldata.data[0])[i]; 
-        uint32_t _pixel = 0;
-
-        uint8_t a = ((uint8_t*)&pixel)[0];
-        uint8_t r = ((uint8_t*)&pixel)[1];
-        uint8_t g = ((uint8_t*)&pixel)[2];
-        uint8_t b = ((uint8_t*)&pixel)[3];
-
-        ((uint8_t*)&_pixel)[0] = r;
-        ((uint8_t*)&_pixel)[1] = g;
-        ((uint8_t*)&_pixel)[2] = b;
-        ((uint8_t*)&_pixel)[3] = a;
-
-        _buffer.push_back(_pixel);
-    }
-
-    int length = 2 + width * height;
-
-    XChangeProperty(dis, win, net_wm_icon, cardinal, 32, PropModeReplace, (const unsigned char*) &_buffer[0], length);
-    XMapWindow(dis, win);
+    Atom cardinal = XInternAtom(d, "CARDINAL", False);
+    w = XCreateWindow(d, RootWindow(d, s), 0, 0, 200, 200, 0, CopyFromParent, InputOutput, CopyFromParent, 0, 0);
+    int length = 2 + 16 * 16 + 2 + 32 * 32;
+    XChangeProperty(d, w, net_wm_icon, cardinal, 32, PropModeReplace, (const unsigned char*) buffer, length);
 };
 
-
-
-
-
-
-
+*/
