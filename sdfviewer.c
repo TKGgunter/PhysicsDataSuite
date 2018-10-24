@@ -14,6 +14,7 @@
 
 
 //TODO
+//+ program crash with trying to graph gen weights
 //+ strings
 //+ integrate log scale
 //+ button struct
@@ -183,10 +184,8 @@ int main (int n_command_line_args, char** argv) {
         }
     }
 
-
-    //TODO
-    //BMP test
-
+    //NOTE
+    //Application icon Bitmap
     TGBmp bmp;
     load_bmp(&_binary_sdfviewer_bmp_start, &_binary_sdfviewer_bmp_end, &bmp);
 
@@ -202,6 +201,7 @@ int main (int n_command_line_args, char** argv) {
     headerSDF header = read_sdfheader_from_disk(&f);
     //TODO 
     //make more robust. We should not shut down just because the file was bad.
+    //we need a way to open files from the application its self.
     if (_sdfERRNO != 0) {
         printf("Improper file format!");
         return -1;
@@ -272,8 +272,6 @@ int main (int n_command_line_args, char** argv) {
 										if( share ) share = false;
 										else{
                         share = true;
-                        //TODO 
-                        //loop through active features to determin 
                         init_shared = 0;
                     }
 								}
@@ -393,7 +391,8 @@ int main (int n_command_line_args, char** argv) {
 
         //TODO
         //Global maybe???
-        unsigned int colors_TEMP[] = {0xffaa00dd, 0xff47b0e0, 0xff5f48e3};
+        //Algorithmic maybe???
+        std::vector<unsigned int> colors_TEMP = {0xffaa00dd, 0xff47b0e0, 0xff5f48e3, 0xff5366dd, 0xffddb653, 0xffe07354};
 
         TGPlot plot;
         plot.initialize = false;
@@ -409,7 +408,22 @@ int main (int n_command_line_args, char** argv) {
                 }
 
                 if (active_features[i_feature]){
-                    XSetForeground(dis, gc, colors_TEMP[i_feature]);
+                  
+                  
+                  
+                    //TODO
+                    //Do some clever thing that will interpolate between hard coded values to generate infinite colors.
+                    unsigned int color = 0;
+                    if (i_feature < colors_TEMP.size()){
+                        color = colors_TEMP[i_feature];
+                    }
+                    else {
+                        color = colors_TEMP[i_feature % colors_TEMP.size()];
+                    }
+
+
+
+                    XSetForeground(dis, gc, color);
                     tagHeaderSDF tag;
                     for(int _i_tags = 0; _i_tags < header.type_tags.size(); _i_tags++){
                         if( header.type_tags[_i_tags].name == menu_arr[i_feature]) tag = header.type_tags[_i_tags];
@@ -445,13 +459,6 @@ int main (int n_command_line_args, char** argv) {
                 }
                 //TODO
                 //Handle strings
-                if (active_features[i_feature] && i_feature == 2){
-                    XSetForeground(dis, gc, 0xff5f48e3);
-                    std::vector<int> contents = {100, 250, 300, 250, 200};
-                    std::vector<float> edges = {50, 50*2, 50*3, 50*4, 50*5, 50*6};
-
-                    TGDrawHistogram( contents, edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true);
-                }
             }
 				}	
         plot_changed = false;
@@ -489,6 +496,8 @@ bool TGInRectangle(int x, int y, int x_rect, int y_rect, int w_rect, int h_rect)
 //Maybe this should return a TGPlot
 int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot){
 		if( contents.size() + 1 != edges.size()) return -1;
+    if( edges.size() == 0 ) return -1;
+
     int max_content = 0;
     float max_edge = edges[edges.size() - 1];
     //NOTE
@@ -585,7 +594,8 @@ void TGDrawTickLabels(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot
 }
 
 TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, float max ){
-    float mean = 0;
+    float mean = 0.0;
+    float standard_deviation = 0.0;
     bool min_max_set = false;
     if( min == max){
         min = 99999.0;
@@ -596,22 +606,40 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
     }
     
     for (int i= 0; i < data.size(); i++){
-        mean += data[i];
-        if( min_max_set == false ) {
-            if ( min > data[i] ) {
-                min = data[i];
-            }
-            if ( max < data[i] ) {
-                max = data[i];
+        if(data[i] != data[i]){
+        }
+        else{
+            mean += data[i];
+            
+            standard_deviation += pow( mean / (i + 1) - data[i], 2.) * ( 1. - pow( i+1, -0.5) ); 
+
+            if( min_max_set == false ) {
+                if ( min > data[i] ) {
+                    min = data[i];
+                }
+                if ( max < data[i] ) {
+                    max = data[i];
+                }
             }
         }
     }
     mean = mean / data.size();
+    standard_deviation = pow(standard_deviation / data.size(), 0.5);
 
-    //NOTE use mean or some other statistic to pick better bin
-    float bin_size = 0;//fabs( max - min ) / 20;
+    //NOTE 
+    //Check if min max range is greater than two std. 
+    //If so use std to determine min and max range 
+    //
+    if ( max > (1*standard_deviation + mean) )  max = 1*standard_deviation + mean;
+    if ( min < (-1*standard_deviation + mean) ) min = -1*standard_deviation + mean;
+    float bin_size = 0;
     if (fabs(max - min) >= 20 ) {bin_size = fabs( max - min ) / 20;}
     else bin_size = fabs( mean - min );
+    if (bin_size == 0) {
+        bin_size = 1;
+        min -= 10;
+        max += 10;
+    }
     TGHistogram rt;
     {//Initialize histogram
         rt.edges.push_back(min);
@@ -627,6 +655,7 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
             }
         }
     }
+    printf("mean %f min %f, max %f std %f bin size %f data size %d\n", mean, min, max, standard_deviation, bin_size, data.size());
     return rt;
 }
 
@@ -780,8 +809,6 @@ void set_icon( TGBmp bmp )
     _buffer.push_back( width );
     _buffer.push_back( height );
 
-    //TODO
-    //Fix reflection
     for(int i = height-1; i > -1; i--){
         for(int j = 0; j < width; j++){
             uint32_t pixel = ((uint32_t*)&bmp.pixeldata.data[0])[i * height + j]; 
