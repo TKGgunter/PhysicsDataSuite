@@ -14,10 +14,11 @@
 
 
 //TODO
-//+ program crash with trying to graph gen weights
+//+ dilepton type histogram breaks bins draw off of plot
 //+ strings
+//+ move log scale button some where that appropiate
 //+ integrate log scale
-//+ button struct
+//+ button struct MAYBE???
 //+ additional statistics
 
 /* include the X library headers */
@@ -282,7 +283,7 @@ int main (int n_command_line_args, char** argv) {
 								for(int i = 0; i < menu_length; i++){
 										if (TGInRectangle(x, window_height - y, 10 , 500 - 25 * i - 5, 100, 20 )){
                         int ith = i + menu_index;
-                        if( ith > menu_arr.size() ) ith = menu_arr.size() - ith;
+                        if( ith > menu_arr.size() ) ith = ith - menu_arr.size();
             
                         if( base_plot_index == -1 ) base_plot_index = ith; 
 												if (active_features[ith] ) active_features[ith] = false;
@@ -313,6 +314,7 @@ int main (int n_command_line_args, char** argv) {
                         menu_index++;
                         if (menu_index >= active_features.size()) menu_index = 0;
                     }
+                        plot_changed = true;
                 }
                 if (TGInRectangle(x, window_height - y, 70 + menu_x, 450, 10, 25)){
                     //TODO
@@ -321,7 +323,9 @@ int main (int n_command_line_args, char** argv) {
                     if( menu_length < active_features.size()){
                         menu_index--;
                         if (menu_index < 0) menu_index = active_features.size()-1;
+                        printf("TEST\n");
                     }
+                        plot_changed = true;
                 }
             }
 				}
@@ -346,7 +350,8 @@ int main (int n_command_line_args, char** argv) {
 				XSetForeground(dis, gc, 0xffaaaaaa);
 				for(int i = 0; i < menu_length; i++){
             int ith = i + menu_index;
-            if( ith > menu_arr.size() ) ith = menu_arr.size() - ith;
+            if( ith > menu_arr.size() ) ith = ith - menu_arr.size();
+                printf("menu index %d length %d ith %d\n", menu_index, menu_length, ith);
 						if ( active_features[ith] ) {
 								TGFillRectangle(10, 500 - 25 * i - 5, 100, 20);
 						}	
@@ -358,7 +363,7 @@ int main (int n_command_line_args, char** argv) {
 						int i = 0;
 						while(i < menu_length){
                 int ith = i + menu_index;
-                if( ith > menu_arr.size() ) ith = menu_arr.size() - ith;
+                if( ith > menu_arr.size() ) ith = ith - menu_arr.size();
 								TGDrawString(10, 500 - 25 * i, menu_arr[ith] );
 								i++;
 						}
@@ -593,6 +598,8 @@ void TGDrawTickLabels(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot
     
 }
 
+//TODO
+//use min
 TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, float max ){
     float mean = 0.0;
     float standard_deviation = 0.0;
@@ -630,11 +637,19 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
     //Check if min max range is greater than two std. 
     //If so use std to determine min and max range 
     //
-    if ( max > (1*standard_deviation + mean) )  max = 1*standard_deviation + mean;
-    if ( min < (-1*standard_deviation + mean) ) min = -1*standard_deviation + mean;
+    if (min_max_set == false){
+        if ( max > (1*standard_deviation + mean) )  max = 1*standard_deviation + mean;
+        if ( min < (-1*standard_deviation + mean) ) min = -1*standard_deviation + mean;
+    }
     float bin_size = 0;
-    if (fabs(max - min) >= 20 ) {bin_size = fabs( max - min ) / 20;}
-    else bin_size = fabs( mean - min );
+    bin_size = fabs( max - min ) / 20;
+    
+    //NOTE Oct 25 , 2018
+    //I don't understand why i did this.
+    //Future me can clear this up if it doesn't be come apparent.
+    //if (fabs(max - min) >= 20 ) {bin_size = fabs( max - min ) / 20;}
+    //else bin_size = fabs( mean - min );
+
     if (bin_size == 0) {
         bin_size = 1;
         min -= 10;
@@ -650,16 +665,17 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
     }
     for(int i = 0; i < data.size(); i++){
         for(int j= 0; j < 20; j++){
-            if( data[i] > min + bin_size * j && data[i] < min + bin_size * (j + 1) ) {
+            if( data[i] >= min + bin_size * j && data[i] < min + bin_size * (j + 1) ) {
                 rt.contents[j] += 1;
             }
         }
     }
-    printf("mean %f min %f, max %f std %f bin size %f data size %d\n", mean, min, max, standard_deviation, bin_size, data.size());
     return rt;
 }
 
 TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max ){
+  //TODO
+  //Update this function with everthing we learned from the TGConstructionHistogram_float
     int mean = 0;
     bool min_max_set = false;
     if ( min == max ){
