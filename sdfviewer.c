@@ -14,7 +14,7 @@
 
 
 //TODO
-//+ dilepton type histogram breaks bins draw off of plot
+//+ shared plots look like they do not share the same y range
 //+ strings
 //+ move log scale button some where that appropiate
 //+ integrate log scale
@@ -323,7 +323,6 @@ int main (int n_command_line_args, char** argv) {
                     if( menu_length < active_features.size()){
                         menu_index--;
                         if (menu_index < 0) menu_index = active_features.size()-1;
-                        printf("TEST\n");
                     }
                         plot_changed = true;
                 }
@@ -351,7 +350,6 @@ int main (int n_command_line_args, char** argv) {
 				for(int i = 0; i < menu_length; i++){
             int ith = i + menu_index;
             if( ith > menu_arr.size() ) ith = ith - menu_arr.size();
-                printf("menu index %d length %d ith %d\n", menu_index, menu_length, ith);
 						if ( active_features[ith] ) {
 								TGFillRectangle(10, 500 - 25 * i - 5, 100, 20);
 						}	
@@ -598,8 +596,6 @@ void TGDrawTickLabels(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot
     
 }
 
-//TODO
-//use min
 TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, float max ){
     float mean = 0.0;
     float standard_deviation = 0.0;
@@ -617,7 +613,6 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
         }
         else{
             mean += data[i];
-            
             standard_deviation += pow( mean / (i + 1) - data[i], 2.) * ( 1. - pow( i+1, -0.5) ); 
 
             if( min_max_set == false ) {
@@ -676,7 +671,8 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
 TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max ){
   //TODO
   //Update this function with everthing we learned from the TGConstructionHistogram_float
-    int mean = 0;
+    float mean = 0;
+    float standard_deviation = 0;
     bool min_max_set = false;
     if ( min == max ){
         min = 99999;
@@ -687,22 +683,39 @@ TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max ){
     }
     
     for (int i= 0; i < data.size(); i++){
-        mean += data[i];
-        if( min_max_set == false ) {
-            if ( min > data[i] ) {
-                min = data[i];
-            }
-            if ( max < data[i] ) {
-                max = data[i];
+        if(data[i] != data[i]){
+        }
+        else{
+            mean += data[i];
+            standard_deviation += pow( mean / (i + 1) - data[i], 2.) * ( 1. - pow( i+1, -0.5) ); 
+
+            if( min_max_set == false ) {
+                if ( min > data[i] ) {
+                    min = data[i];
+                }
+                if ( max < data[i] ) {
+                    max = data[i];
+                }
             }
         }
     }
     mean = mean / data.size();
+    standard_deviation = pow(standard_deviation / data.size(), 0.5);
 
     //NOTE use mean or some statistic to pick better bin
-    int bin_size = 0;
-    if (abs(max - min) >= 20 ) {bin_size = abs( max - min ) / 20;}
-    else bin_size = abs( mean - min );
+    if (min_max_set == false){
+        if ( max > ( 1*standard_deviation + mean) )  max = round(1*standard_deviation + mean);
+        if ( min < (-1*standard_deviation + mean) ) min = round(-1*standard_deviation + mean);
+        if (min + 20 != max) {
+           min = mean - 10;
+           max = max + 10;
+        }
+    }
+    
+    float bin_size = 0;
+    bin_size = round(fabs( max - min ) / 20.0);
+
+
     TGHistogram rt;
     {//Initialize histogram
         rt.edges.push_back(min);
@@ -713,7 +726,7 @@ TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max ){
     }
     for(int i = 0; i < data.size(); i++){
         for(int j= 0; j < 20; j++){
-            if( data[i] > min + bin_size * j && data[i] < min + bin_size * (j + 1) ) {
+            if( data[i] >= min + bin_size * j && data[i] < min + bin_size * (j + 1) ) {
                 rt.contents[j] += 1;
             }
         }
