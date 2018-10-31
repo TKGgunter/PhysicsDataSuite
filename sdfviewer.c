@@ -14,9 +14,8 @@
 
 
 //TODO
-//+ shared plots look like they do not share the same y range
-//+ strings
 //+ move log scale button some where that appropiate
+//+ strings
 //+ integrate log scale
 //+ button struct MAYBE???
 //+ additional statistics
@@ -508,7 +507,7 @@ int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int pl
     for(int i= 0; i < contents.size(); i++){
           if(contents[i] > max_content ) max_content = contents[i];
     }
-    float scale = plot_bound_height / (1.20 * max_content);
+    float scale = 0.0;//plot_bound_height / (1.20 * max_content);
 
 
     TGPlot _plot;
@@ -530,10 +529,12 @@ int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int pl
             }
         }
         plot->initialize = true;
+        int max_tick = plot->axis.yticks[plot->axis.yticks.size() - 1];
+        scale = float(plot_bound_height) / float(max_tick);
     }
     else{
-        max_content = plot->axis.yticks[plot->axis.yticks.size() - 1] / 1.20;
-        scale = plot_bound_height / (1.20 * max_content);
+        float max_tick = plot->axis.yticks[plot->axis.yticks.size() - 1];
+        scale = plot_bound_height / max_tick;
     }
 
     std::vector<float> _edges;
@@ -544,14 +545,11 @@ int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int pl
     
 
     for(int i= 0; i < contents.size(); i++){
-        //TODO
-        //cap height to the plot bound height
         int height  = int(scale * contents[i]) >= plot_bound_height ? plot_bound_height :  int(scale * contents[i]);
         if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
         else TGDrawRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
     }
     TGDrawTicks(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
-    //TODO
     TGDrawTickLabels(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
 		return 0;
 }
