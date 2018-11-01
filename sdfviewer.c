@@ -14,9 +14,11 @@
 
 
 //TODO
-//+ move log scale button some where that appropiate
-//+ strings
 //+ integrate log scale
+//    + extend to two std when logy is true
+//    + logy tick marks
+//    + scale the logy properly
+//+ strings
 //+ button struct MAYBE???
 //+ additional statistics
 
@@ -148,17 +150,17 @@ void TGFillRectangle(int x, int y, int w, int h);
 void TGDrawLine(int x1, int x2, int y1 ,int y2);
 void TGDrawString(int x, int y, std::string str);
 bool TGInRectangle(int x, int y, int x_rect, int y_rect, int w_rect, int h_rect);
-int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot = NULL);
+int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot = NULL, bool logy = false);
 void TGDrawTicks(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height);
 void TGDrawTickLabels(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height);
-TGHistogram TGConstructHistogram_float( std::vector<float> data, float min=-1.0, float max=-1.0 );
-TGHistogram TGConstructHistogram_int( std::vector<int> data, int min=-1, int max=-1 );
+TGHistogram TGConstructHistogram_float( std::vector<float> data, float min=-1.0, float max=-1.0, bool logy=false );
+TGHistogram TGConstructHistogram_int( std::vector<int> data, int min=-1, int max=-1, bool logy=false );
 
 //NOTE
 //copied from the solution on 
 //https://stackoverflow.com/questions/16605967/set-precision-of-stdto-string-when-converting-floating-point-values
 template <typename T>
-std::string to_string_with_precision(const T a_value, const int n = 2)
+std::string to_string_with_precision(const T a_value, const int n = 3)
 {
       std::ostringstream out;
       out.precision(n);
@@ -213,6 +215,7 @@ int main (int n_command_line_args, char** argv) {
     int menu_length = 20;
     std::vector<bool> active_features;
     bool share = false; 
+    bool logy = false; 
     int init_shared = -1; 
     bool plot_changed = false; 
 
@@ -274,6 +277,14 @@ int main (int n_command_line_args, char** argv) {
                         share = true;
                         init_shared = 0;
                     }
+								}
+						}
+						//Note
+						//Setting logy histogram flag
+						{
+								if( TGInRectangle(x, window_height - y, 112, plot_bound_y + plot_bound_height -35, 40, 20) ){ 
+										if( logy ) logy = false;
+										else logy = true;
 								}
 						}
 						//Note
@@ -341,6 +352,16 @@ int main (int n_command_line_args, char** argv) {
 				else{
 						XSetForeground(dis, gc, 0xff55aa55);
 						TGFillRectangle(20, plot_bound_y + plot_bound_height - 5 - 30, 70, 20);
+				}
+				//NOTE
+				//debug toggle logy button
+				if (logy){
+						XSetForeground(dis, gc, 0xffaa5555);
+            TGFillRectangle(112, plot_bound_y + plot_bound_height - 35, 40, 20);
+				}
+				else{
+						XSetForeground(dis, gc, 0xff55aa55);
+				    TGFillRectangle(112, plot_bound_y + plot_bound_height - 35, 40, 20);
 				}
 
 				//NOTE
@@ -449,14 +470,14 @@ int main (int n_command_line_args, char** argv) {
 
                     if ( share ) {
                         if ( i_feature == base_plot_index ) {
-                            TGDrawHistogram( histogram.contents, histogram.edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true, &plot);
+                            TGDrawHistogram( histogram.contents, histogram.edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true, &plot, logy);
                         }
                         else{
-                            TGDrawHistogram( histogram.contents, histogram.edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, false, &plot);
+                            TGDrawHistogram( histogram.contents, histogram.edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, false, &plot, logy);
                         }
                     }
                     else{ 
-                        TGDrawHistogram( histogram.contents, histogram.edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true, &plot);
+                        TGDrawHistogram( histogram.contents, histogram.edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true, &plot, logy);
                     }
                 }
                 //TODO
@@ -466,9 +487,9 @@ int main (int n_command_line_args, char** argv) {
         plot_changed = false;
 				XSetForeground(dis, gc, 0xffdddddd);
 				TGDrawRectangle(plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
-				TGDrawString(plot_bound_x + plot_bound_width/2, plot_bound_y - 50, "logy");
 				TGDrawString(42 - 20, plot_bound_y + plot_bound_height - 30, "share");
 				TGDrawString(42 + 20, plot_bound_y + plot_bound_height - 30, "full");
+				TGDrawString(120    , plot_bound_y + plot_bound_height - 30, "logy");
 		}
 }
 
@@ -496,7 +517,7 @@ bool TGInRectangle(int x, int y, int x_rect, int y_rect, int w_rect, int h_rect)
 
 //NOTE
 //Maybe this should return a TGPlot
-int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot){
+int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot, bool logy){
 		if( contents.size() + 1 != edges.size()) return -1;
     if( edges.size() == 0 ) return -1;
 
@@ -539,13 +560,13 @@ int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int pl
 
     std::vector<float> _edges;
     for(int i= 0; i < edges.size(); i++){
-
         _edges.push_back(round( plot_bound_width * (edges[i] - edges[0]) / (max_edge - edges[0])));
     }
     
 
     for(int i= 0; i < contents.size(); i++){
         int height  = int(scale * contents[i]) >= plot_bound_height ? plot_bound_height :  int(scale * contents[i]);
+        if (logy) height = int( plot_bound_height * log10(contents[i]) / 10.);
         if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
         else TGDrawRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
     }
