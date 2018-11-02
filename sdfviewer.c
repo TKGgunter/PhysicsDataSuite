@@ -14,10 +14,6 @@
 
 
 //TODO
-//+ integrate log scale
-//    + extend to two std when logy is true
-//    + logy tick marks
-//    + scale the logy properly
 //+ strings
 //+ button struct MAYBE???
 //+ additional statistics
@@ -455,8 +451,8 @@ int main (int n_command_line_args, char** argv) {
                     TGHistogram histogram;
                     if ( tag.type_info == FLOAT ) {
                         std::vector<float> data((float*)&_data[0],(float*)&_data[0] + _data.size() / 32);
-                        if( share && plot.initialize == true ) histogram = TGConstructHistogram_float(data, plot.axis.xticks[0], plot.axis.xticks[ plot.axis.xticks.size() - 1 ]);
-                        else histogram = TGConstructHistogram_float(data);
+                        if( share && plot.initialize == true ) histogram = TGConstructHistogram_float(data, plot.axis.xticks[0], plot.axis.xticks[ plot.axis.xticks.size() - 1 ], logy);
+                        else histogram = TGConstructHistogram_float(data, 0, 0, logy);
                     }
                     else if ( tag.type_info == INT ) {
                         std::vector<int> data((int*)&_data[0],(int*)&_data[0] + _data.size() / 32);
@@ -528,7 +524,7 @@ int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int pl
     for(int i= 0; i < contents.size(); i++){
           if(contents[i] > max_content ) max_content = contents[i];
     }
-    float scale = 0.0;//plot_bound_height / (1.20 * max_content);
+    float scale = 0.0;
 
 
     TGPlot _plot;
@@ -546,7 +542,8 @@ int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int pl
             if ( max_content / (y - prev)  <= 20 || y == 0){
                 prev = y;
                 plot->axis.yticks.push_back(y);
-                plot->labels.ylabels.push_back(to_string_with_precision(y));
+                if(logy) plot->labels.ylabels.push_back(to_string_with_precision( pow( 10, float(y) / float(max_content * 1.20) * log10(max_content * 1.50))  ));
+                else plot->labels.ylabels.push_back(to_string_with_precision(y));
             }
         }
         plot->initialize = true;
@@ -566,7 +563,7 @@ int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int pl
 
     for(int i= 0; i < contents.size(); i++){
         int height  = int(scale * contents[i]) >= plot_bound_height ? plot_bound_height :  int(scale * contents[i]);
-        if (logy) height = int( plot_bound_height * log10(contents[i]) / 10.);
+        if (logy) height = int( plot_bound_height * log10(contents[i]) / log10(max_content * 1.50));
         if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
         else TGDrawRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
     }
@@ -615,7 +612,7 @@ void TGDrawTickLabels(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot
     
 }
 
-TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, float max ){
+TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, float max, bool logy ){
     float mean = 0.0;
     float standard_deviation = 0.0;
     bool min_max_set = false;
@@ -652,8 +649,14 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
     //If so use std to determine min and max range 
     //
     if (min_max_set == false){
-        if ( max > (1*standard_deviation + mean) )  max = 1*standard_deviation + mean;
-        if ( min < (-1*standard_deviation + mean) ) min = -1*standard_deviation + mean;
+        if ( logy ) {
+            //if ( max > (2*standard_deviation + mean) )  max = 3*standard_deviation + mean;
+            //if ( min < (-2*standard_deviation + mean) ) min = -2*standard_deviation + mean;
+        }
+        else{
+            if ( max > (1*standard_deviation + mean) )  max = 1*standard_deviation + mean;
+            if ( min < (-1*standard_deviation + mean) ) min = -1*standard_deviation + mean;
+        }
     }
     float bin_size = 0;
     bin_size = fabs( max - min ) / 20;
@@ -687,7 +690,7 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
     return rt;
 }
 
-TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max ){
+TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max, bool logy ){
   //TODO
   //Update this function with everthing we learned from the TGConstructionHistogram_float
     float mean = 0;
