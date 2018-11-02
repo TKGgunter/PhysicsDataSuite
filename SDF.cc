@@ -9,10 +9,21 @@
 
 
 //TODO
+// Make thing more C-like to ease use with other languages
 // + 16bit float
 // + memcopy for loop over array?
 // + verify everything works properly
 
+
+//NOTE
+//dll compile
+//g++ -c SDF.cc -std=c++11  &&  g++ -shared -o SDF.dll SDF.o
+
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int _sdfERRNO = 0;
 
@@ -76,6 +87,22 @@ struct SerialDataFormat{
 		std::map<std::string, int>* vars_int;
 		std::map<std::string, std::string>* vars_str;
 };
+
+int stage_variables( SerialDataFormat* sdf );
+void update_buffers(SerialDataFormat* sdf);
+void write_sdf_to_disk(std::string file_name, SerialDataFormat* sdf );
+headerSDF read_sdfheader_from_disk(std::fstream* f);
+int get_tag_index(headerSDF* header, TypeTag type , std::string name);
+std::vector<uint8_t> get_buffer_from_disk( std::fstream* f, tagHeaderSDF* tag, headerSDF* header);
+SerialDataFormat read_sdf_from_disk(std::string file_name);
+
+
+
+#ifdef __cplusplus
+}
+#endif
+
+
 
 
 template <class T>
