@@ -25,6 +25,7 @@
 extern "C" {
 #endif
 
+
 int _sdfERRNO = 0;
 
 enum TypeTag{
@@ -392,7 +393,7 @@ headerSDF read_sdfheader_from_disk(std::fstream* f){
     for (uint32_t i = 0; i < header.number_of_features ; i++){
         TypeTag type; 
         //Note:
-        //Strings can only be 255 in length
+        //Strings can only be max 255 in length
         //And have NO zero termination character
         uint8_t string_length;
         f->read((char*)&string_length, sizeof(string_length));
