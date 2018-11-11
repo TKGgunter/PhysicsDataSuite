@@ -11,16 +11,16 @@ class headerSDF:
     number_of_events = -1
     type_tags = [] 
 
-#struct tagHeaderSDF{
-#		std::string name;
-#		TypeTag type_info;
-#		uint32_t buffer_size;
-#};
 
 class tagHeaderSDF:
     name = ""
     type_info = 0 #TODO make enum
     buffer_size = 0
+
+
+
+class memblockSDF:
+    _buffer = b''
 
 def SDFopen(file_name):
     f = open(file_name, "rb")
@@ -51,16 +51,53 @@ def SDFloadHeader(f):
 
     return header
 
+
+
 def SDFload_buffer(f, header, key):
-    return "POOP"
+    if type(key) == str :
+        key = bytes(key, 'utf-8')
+
+    membuffer = memblockSDF()
+    _index = -1
+    bytes_before = header.start_buffer
+
+    buffer_size = 0
+    type_info = 0
+
+    for i, tag in enumerate(header.type_tags):
+        print( bytes_before )
+        if _index != -1:
+            break
+        if tag.name == key:
+            _index = i
+            buffer_size = tag.buffer_size
+            type_info   = tag.type_info
+            break
+        else:
+            bytes_before += tag.buffer_size
+    
+    
+    f.seek(bytes_before)
+    membuffer._buffer = f.read(buffer_size)
+    if header.compression_flag == 1:
+        #TODO
+        #We only take care to INTS and FLOATS right now
+        if 
+        membuffer._buffer = zlib.decompress(membuffer._buffer, bufsize=header.number_of_events * 4) 
+    return membuffer
 
 
+def SDFmembuffer_to_array(membuffer, np_type):
+    return numpy.fromstring(membuffer._buffer, np_type)
 
 
-
-
-
-
+if __name__ == "__main__":
+    f = SDFopen("test_compression_1.sdf")
+    header = SDFloadHeader(f)
+    a = SDFload_buffer(f, header, b'grade')
+    print("n events", header.number_of_events)
+    b = SDFmembuffer_to_array(a, numpy.float32)
+    print( b )
 
 
 

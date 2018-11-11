@@ -450,12 +450,12 @@ int main (int n_command_line_args, char** argv) {
                     std::vector<uint8_t> _data = get_buffer_from_disk( &f, &tag, &header);
                     TGHistogram histogram;
                     if ( tag.type_info == FLOAT ) {
-                        std::vector<float> data((float*)&_data[0],(float*)&_data[0] + _data.size() / 32);
+                        std::vector<float> data((float*)&_data[0],(float*)&_data[0] + _data.size() / 4);
                         if( share && plot.initialize == true ) histogram = TGConstructHistogram_float(data, plot.axis.xticks[0], plot.axis.xticks[ plot.axis.xticks.size() - 1 ], logy);
                         else histogram = TGConstructHistogram_float(data, 0, 0, logy);
                     }
                     else if ( tag.type_info == INT ) {
-                        std::vector<int> data((int*)&_data[0],(int*)&_data[0] + _data.size() / 32);
+                        std::vector<int> data((int*)&_data[0],(int*)&_data[0] + _data.size() / 4);
                         if( share && plot.initialize == true ) histogram = TGConstructHistogram_int(data, plot.axis.xticks[0], plot.axis.xticks[ plot.axis.xticks.size() - 1 ]);
                         else histogram = TGConstructHistogram_int(data);
                     }
