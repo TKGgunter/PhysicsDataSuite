@@ -17,7 +17,7 @@
 
 //NOTE
 //dll compile
-//g++ -c SDF.cc -std=c++11  &&  g++ -shared -o SDF.dll SDF.o
+//g++ -c SDF.cc -std=c++11 -fPIC  &&  g++ -shared -o SDF.dll SDF.o
 
 
 
@@ -282,6 +282,9 @@ void update_buffers(SerialDataFormat* sdf){
 										temp_str.characters[i] = *it;
 										i++;
 								}
+                for( i; i < 256; i++){
+                    temp_str.characters[i] = char(0);
+                }
 						}
 						
 						auto bytes_str = to_bytes(&temp_str);
