@@ -11,8 +11,6 @@
 //TODO
 // Make thing more C-like to ease use with other languages
 // + 16bit float
-// + memcopy for loop over array?
-// + verify everything works properly
 
 
 //NOTE

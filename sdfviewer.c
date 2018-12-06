@@ -15,8 +15,7 @@
 
 //TODO
 //+ strings
-//+ button struct MAYBE???
-//+ additional statistics
+//+ some better way to scroll through features
 
 /* include the X library headers */
 #include <X11/Xlib.h>
@@ -151,6 +150,7 @@ void TGDrawTicks(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot_boun
 void TGDrawTickLabels(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height);
 TGHistogram TGConstructHistogram_float( std::vector<float> data, float min=-1.0, float max=-1.0, bool logy=false );
 TGHistogram TGConstructHistogram_int( std::vector<int> data, int min=-1, int max=-1, bool logy=false );
+TGHistogram TGConstructHistogram_str( std::vector<stringSDF> data, bool logy=false );
 
 //NOTE
 //copied from the solution on 
@@ -252,89 +252,105 @@ int main (int n_command_line_args, char** argv) {
                 close_x();
             }
         }
-				if (event.type == KeyPress && XLookupString(&event.xkey, text, 255, &key, 0) == 1) {
-				/* use the XLookupString routine to convert the invent
-		 *		   KeyPress data into regular text.  Weird but necessary...
-		 *	*/
-						if (text[0]=='q') {
-								close_x();
-						}
-				}
-				if (event.type==ButtonPress) {
-						int x = event.xbutton.x;
-						int	y = event.xbutton.y;
-
-						//Note
-						//Setting shared histogram flag
-						{
-								if( TGInRectangle(x, window_height - y, 20, plot_bound_y + plot_bound_height - 30, 70, 20) ){ 
-										if( share ) share = false;
-										else{
-                        share = true;
-                        init_shared = 0;
-                    }
-								}
-						}
-						//Note
-						//Setting logy histogram flag
-						{
-								if( TGInRectangle(x, window_height - y, 112, plot_bound_y + plot_bound_height -35, 40, 20) ){ 
-										if( logy ) logy = false;
-										else logy = true;
-								}
-						}
-						//Note
-						//Setting active feature
-						{
-								for(int i = 0; i < menu_length; i++){
-										if (TGInRectangle(x, window_height - y, 10 , 500 - 25 * i - 5, 100, 20 )){
-                        int ith = i + menu_index;
-                        if( ith > menu_arr.size() ) ith = ith - menu_arr.size();
-            
-                        if( base_plot_index == -1 ) base_plot_index = ith; 
-												if (active_features[ith] ) active_features[ith] = false;
-												else{
-                            active_features[ith] = true;
-                        }
-                        {
-                            bool no_active_features = true;
-                            for(int j = 0; j < menu_arr.size(); j++){
-                                if (share == false){
-                                    if( ith != j ) active_features[j] = false;
-                                }
-                                if ( active_features[j] ) no_active_features = false;
-                            }
-                            if( no_active_features ) base_plot_index = -1;
-												}
-                        plot_changed = true;
-												break;
-										}
-								}
-						}
-            {//Arrows that scroll through features
-                if (TGInRectangle(x, window_height - y, 50 + menu_x, 450, 10, 25)) {
-                    //TODO
-                    //Give user some feed back that the interaction with the
-                    //button has been registered.
-                    if( menu_length < active_features.size()){
-                        menu_index++;
-                        if (menu_index >= active_features.size()) menu_index = 0;
-                    }
-                        plot_changed = true;
+        //NOTE
+        //Exit the application
+        {
+            if (event.type == KeyPress && XLookupString(&event.xkey, text, 255, &key, 0) == 1) {
+            /* use the XLookupString routine to convert the invent
+         *		   KeyPress data into regular text.  Weird but necessary...
+         *	*/
+                if (text[0]=='q') {
+                    close_x();
                 }
-                if (TGInRectangle(x, window_height - y, 70 + menu_x, 450, 10, 25)){
-                    //TODO
-                    //Give user some feed back that the interaction with the
-                    //button has been registered.
-                    if( menu_length < active_features.size()){
-                        menu_index--;
-                        if (menu_index < 0) menu_index = active_features.size()-1;
+            }
+            //NOTE
+            //ESC keycode is 0x09
+            if (event.type == KeyPress && event.xkey.keycode == 0x09){
+                close_x();
+            }
+        }
+				if (event.type==ButtonPress) {
+            if (event.xbutton.button == Button1){
+                int x = event.xbutton.x;
+                int	y = event.xbutton.y;
+
+                //Note
+                //Setting shared histogram flag
+                {
+                    if( TGInRectangle(x, window_height - y, 20, plot_bound_y + plot_bound_height - 30, 70, 20) ){ 
+                        if( share ) share = false;
+                        else{
+                            share = true;
+                            init_shared = 0;
+                        }
                     }
+                }
+                //Note
+                //Setting logy histogram flag
+                {
+                    if( TGInRectangle(x, window_height - y, 112, plot_bound_y + plot_bound_height -35, 40, 20) ){ 
+                        if( logy ) logy = false;
+                        else logy = true;
                         plot_changed = true;
+                    }
+                }
+                //Note
+                //Setting active feature
+                {
+                    for(int i = 0; i < menu_length; i++){
+                        if (TGInRectangle(x, window_height - y, 10 , 500 - 25 * i - 5, 100, 20 )){
+                            int ith = i + menu_index;
+                            if( ith > menu_arr.size() ) ith = ith - menu_arr.size();
+                
+                            if( base_plot_index == -1 ) base_plot_index = ith; 
+                            if (active_features[ith] ) active_features[ith] = false;
+                            else{
+                                active_features[ith] = true;
+                            }
+                            {
+                                bool no_active_features = true;
+                                for(int j = 0; j < menu_arr.size(); j++){
+                                    if (share == false){
+                                        if( ith != j ) active_features[j] = false;
+                                    }
+                                    if ( active_features[j] ) no_active_features = false;
+                                }
+                                if( no_active_features ) base_plot_index = -1;
+                            }
+                            plot_changed = true;
+                            break;
+                        }
+                    }
+                }
+                {//Arrows that scroll through features
+                    if (TGInRectangle(x, window_height - y, 50 + menu_x, 450, 10, 25)) {
+                        //TODO
+                        //Give user some feed back that the interaction with the
+                        //button has been registered.
+                        if( menu_length < active_features.size()){
+                            menu_index++;
+                            if (menu_index >= active_features.size()) menu_index = 0;
+                        }
+                            plot_changed = true;
+                    }
+                    if (TGInRectangle(x, window_height - y, 70 + menu_x, 450, 10, 25)){
+                        //TODO
+                        //Give user some feed back that the interaction with the
+                        //button has been registered.
+                        if( menu_length < active_features.size()){
+                            menu_index--;
+                            if (menu_index < 0) menu_index = active_features.size()-1;
+                        }
+                            plot_changed = true;
+                    }
                 }
             }
 				}
 
+        //NOTE
+        // or ButtonPress
+        //Allows for the plotting canvas to be repainted when the previous feature is no longer of interest. 
+        //-- TKG 12/06/2018
 				if ((event.type == Expose && event.xexpose.count==0) || event.type==ButtonPress ) {
 						if ( plot_changed ) redraw();
 				}
@@ -428,8 +444,6 @@ int main (int n_command_line_args, char** argv) {
 
                 if (active_features[i_feature]){
                   
-                  
-                  
                     //TODO
                     //Do some clever thing that will interpolate between hard coded values to generate infinite colors.
                     unsigned int color = 0;
@@ -447,7 +461,9 @@ int main (int n_command_line_args, char** argv) {
                     for(int _i_tags = 0; _i_tags < header.type_tags.size(); _i_tags++){
                         if( header.type_tags[_i_tags].name == menu_arr[i_feature]) tag = header.type_tags[_i_tags];
                     }
+
                     std::vector<uint8_t> _data = get_buffer_from_disk( &f, &tag, &header);
+
                     TGHistogram histogram;
                     if ( tag.type_info == FLOAT ) {
                         std::vector<float> data((float*)&_data[0],(float*)&_data[0] + _data.size() / 4);
@@ -459,8 +475,14 @@ int main (int n_command_line_args, char** argv) {
                         if( share && plot.initialize == true ) histogram = TGConstructHistogram_int(data, plot.axis.xticks[0], plot.axis.xticks[ plot.axis.xticks.size() - 1 ]);
                         else histogram = TGConstructHistogram_int(data);
                     }
+                    else if ( tag.type_info == STR){
+                        
+                        std::vector<stringSDF> data((stringSDF*)&_data[0], (stringSDF*)&_data[0] + _data.size() / sizeof(stringSDF));
+                        TGConstructHistogram_str( data, logy );
+                        break;
+                    }
                     else{
-                        std::cout << "NOT COMPLETED" << std::endl;
+                        printf("Type Unknown\n");
                         break;
                     }
 
@@ -754,6 +776,16 @@ TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max, b
         }
     }
 
+    return rt;
+}
+
+TGHistogram TGConstructHistogram_str( std::vector<stringSDF> data, bool logy ){
+    printf("NOT COMPLETED YET");
+    TGHistogram rt;
+    //Loop over data
+    // keep a growing array for unique strings
+    // as we loop count the data associated with each unique string
+    // 
     return rt;
 }
 
