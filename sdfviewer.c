@@ -15,7 +15,9 @@
 
 //TODO
 //+ strings
-//+ some better way to scroll through features
+//+ button structs maybe ????
+//+ scroll through features
+//+ look out for bugs
 
 /* include the X library headers */
 #include <X11/Xlib.h>
@@ -45,9 +47,16 @@ extern const char _binary_sdfviewer_bmp_start;
 extern const char _binary_sdfviewer_bmp_end;
 extern const int  _binary_sdfviewer_bmp_size;
 
+enum HistType{
+    HistDEFAULT,
+    HistSTRING,
+    HistNUMB
+};
 
 struct TGHistogram{
+    HistType type = HistDEFAULT;
     std::vector<int> contents;
+    std::vector<stringSDF> str_edges;
     std::vector<float> edges;
 };
 
@@ -110,6 +119,16 @@ struct TGBmp{
     TGPixelData pixeldata;
 };
 
+union _histedges{
+    std::vector<stringSDF>* str;
+    std::vector<float>* numeric;
+};
+
+struct HistEdges{
+    HistType type;
+    _histedges data;
+};
+
 int load_bmpheader(const char* buffer, TGBmpheader* header);
 int load_bmpdib(const char* buffer, TGBmpDIB* dib);
 void load_pixeldata( const char* buffer_start, const char* buffer_end, TGPixelData* pixeldata, TGBmpheader header);
@@ -145,7 +164,7 @@ void TGFillRectangle(int x, int y, int w, int h);
 void TGDrawLine(int x1, int x2, int y1 ,int y2);
 void TGDrawString(int x, int y, std::string str);
 bool TGInRectangle(int x, int y, int x_rect, int y_rect, int w_rect, int h_rect);
-int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot = NULL, bool logy = false);
+int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot = NULL, bool logy = false);
 void TGDrawTicks(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height);
 void TGDrawTickLabels(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height);
 TGHistogram TGConstructHistogram_float( std::vector<float> data, float min=-1.0, float max=-1.0, bool logy=false );
@@ -478,8 +497,8 @@ int main (int n_command_line_args, char** argv) {
                     else if ( tag.type_info == STR){
                         
                         std::vector<stringSDF> data((stringSDF*)&_data[0], (stringSDF*)&_data[0] + _data.size() / sizeof(stringSDF));
-                        TGConstructHistogram_str( data, logy );
-                        break;
+                        if( share && plot.initialize == true ) printf("String types can not share plots at this point. \n  -TKG Dec 2018");
+                        else histogram = TGConstructHistogram_str( data, logy );
                     }
                     else{
                         printf("Type Unknown\n");
@@ -488,14 +507,23 @@ int main (int n_command_line_args, char** argv) {
 
                     if ( share ) {
                         if ( i_feature == base_plot_index ) {
-                            TGDrawHistogram( histogram.contents, histogram.edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true, &plot, logy);
+                            HistEdges edges;
+                            edges.type = HistNUMB;
+                            edges.data.numeric = &histogram.edges;
+                            TGDrawHistogram( histogram.contents, edges, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true, &plot, logy);
                         }
                         else{
-                            TGDrawHistogram( histogram.contents, histogram.edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, false, &plot, logy);
+                            HistEdges edges;
+                            edges.type = HistNUMB;
+                            edges.data.numeric = &histogram.edges;
+                            TGDrawHistogram( histogram.contents, edges, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, false, &plot, logy);
                         }
                     }
                     else{ 
-                        TGDrawHistogram( histogram.contents, histogram.edges ,plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true, &plot, logy);
+                        HistEdges edges;
+                        edges.type = HistNUMB;
+                        edges.data.numeric = &histogram.edges;
+                        TGDrawHistogram( histogram.contents, edges, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true, &plot, logy);
                     }
                 }
                 //TODO
@@ -535,7 +563,11 @@ bool TGInRectangle(int x, int y, int x_rect, int y_rect, int w_rect, int h_rect)
 
 //NOTE
 //Maybe this should return a TGPlot
-int TGDrawHistogram( std::vector<int> contents, std::vector<float> edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot, bool logy){
+//TODO
+//Finish incorrperating strings
+int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot, bool logy){
+    
+    std::vector<float> edges = *__edges.data.numeric;
 		if( contents.size() + 1 != edges.size()) return -1;
     if( edges.size() == 0 ) return -1;
 
@@ -780,12 +812,36 @@ TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max, b
 }
 
 TGHistogram TGConstructHistogram_str( std::vector<stringSDF> data, bool logy ){
-    printf("NOT COMPLETED YET");
-    TGHistogram rt;
     //Loop over data
     // keep a growing array for unique strings
     // as we loop count the data associated with each unique string
     // 
+    
+    std::vector<stringSDF> unique_str;
+    std::vector<int> unique_counts;
+    for(int i = 0; i < data.size(); i++){
+
+        bool add_feature = false;
+        for(int j = 0 ; j < unique_str.size(); j++){
+            if( strcmp(data[i].characters, unique_str[j].characters) != 0 ){ 
+                add_feature = true;
+                break;
+            }
+            else{
+                unique_counts[j] += 1;
+            }
+        }
+        if( add_feature ){
+            unique_str.push_back(data[i]);
+            unique_counts.push_back(0);
+        }
+    }
+
+
+    TGHistogram rt;
+    rt.type = HistSTRING;
+    rt.str_edges = unique_str;
+    rt.contents = unique_counts;
     return rt;
 }
 
