@@ -497,7 +497,7 @@ int main (int n_command_line_args, char** argv) {
                     else if ( tag.type_info == STR){
                         
                         std::vector<stringSDF> data((stringSDF*)&_data[0], (stringSDF*)&_data[0] + _data.size() / sizeof(stringSDF));
-                        if( share && plot.initialize == true ) printf("String types can not share plots at this point. \n  -TKG Dec 2018");
+                        if( share && plot.initialize == true ) printf("String types can not share plots at this point. \n  -TKG Dec 2018\n");
                         else histogram = TGConstructHistogram_str( data, logy );
                     }
                     else{
@@ -521,8 +521,11 @@ int main (int n_command_line_args, char** argv) {
                     }
                     else{ 
                         HistEdges edges;
-                        edges.type = HistNUMB;
-                        edges.data.numeric = &histogram.edges;
+                        edges.type = histogram.type;
+                        if (edges.type == HistSTRING){
+                            edges.data.str = &histogram.str_edges;
+                        }
+                        else{ edges.data.numeric = &histogram.edges; }
                         TGDrawHistogram( histogram.contents, edges, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height, true, &plot, logy);
                     }
                 }
@@ -567,30 +570,95 @@ bool TGInRectangle(int x, int y, int x_rect, int y_rect, int w_rect, int h_rect)
 //Finish incorrperating strings
 int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot, bool logy){
     
-    std::vector<float> edges = *__edges.data.numeric;
-		if( contents.size() + 1 != edges.size()) return -1;
-    if( edges.size() == 0 ) return -1;
+    if ( __edges.type == HistNUMB || __edges.type == HistDEFAULT){
+        std::vector<float> edges = *__edges.data.numeric;
+        if( contents.size() + 1 != edges.size()) return -1;
+        if( edges.size() == 0 ) return -1;
 
-    int max_content = 0;
-    float max_edge = edges[edges.size() - 1];
-    //NOTE
-    //I cant move this inside an if statement without core dump and I don't know why! 
-    for(int i= 0; i < contents.size(); i++){
-          if(contents[i] > max_content ) max_content = contents[i];
-    }
-    float scale = 0.0;
-
-
-    TGPlot _plot;
-    if (plot == NULL){
-        plot = &_plot;
-        plot->initialize = false;
-    }
-    if (plot->initialize == false){
-        for(int i_edge = 0; i_edge < edges.size(); i_edge++){
-            plot->axis.xticks.push_back(edges[i_edge]);
-            plot->labels.xlabels.push_back(to_string_with_precision(edges[i_edge]));
+        int max_content = 0;
+        float max_edge = edges[edges.size() - 1];
+        //NOTE
+        //I cant move this inside an if statement without core dump and I don't know why! 
+        for(int i= 0; i < contents.size(); i++){
+              if(contents[i] > max_content ) max_content = contents[i];
         }
+        float scale = 0.0;
+
+
+        TGPlot _plot;
+        if (plot == NULL){
+            plot = &_plot;
+            plot->initialize = false;
+        }
+        if (plot->initialize == false){
+            for(int i_edge = 0; i_edge < edges.size(); i_edge++){
+                plot->axis.xticks.push_back(edges[i_edge]);
+                plot->labels.xlabels.push_back(to_string_with_precision(edges[i_edge]));
+            }
+            float prev = 0;
+            for(int y = 0; y < max_content * 1.20; y++){
+                if ( max_content / (y - prev)  <= 20 || y == 0){
+                    prev = y;
+                    plot->axis.yticks.push_back(y);
+                    if(logy) plot->labels.ylabels.push_back(to_string_with_precision( pow( 10, float(y) / float(max_content * 1.20) * log10(max_content * 1.50))  ));
+                    else plot->labels.ylabels.push_back(to_string_with_precision(y));
+                }
+            }
+            plot->initialize = true;
+            int max_tick = plot->axis.yticks[plot->axis.yticks.size() - 1];
+            scale = float(plot_bound_height) / float(max_tick);
+        }
+        else{
+            float max_tick = plot->axis.yticks[plot->axis.yticks.size() - 1];
+            scale = plot_bound_height / max_tick;
+        }
+
+        std::vector<float> _edges;
+        for(int i= 0; i < edges.size(); i++){
+            _edges.push_back(round( plot_bound_width * (edges[i] - edges[0]) / (max_edge - edges[0])));
+        }
+        
+
+        for(int i= 0; i < contents.size(); i++){
+            int height  = int(scale * contents[i]) >= plot_bound_height ? plot_bound_height :  int(scale * contents[i]);
+            if (logy) height = int( plot_bound_height * log10(contents[i]) / log10(max_content * 1.50));
+            if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
+            else TGDrawRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
+        }
+        TGDrawTicks(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
+        TGDrawTickLabels(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
+        return 0;
+    }
+    else{
+        TGPlot _plot;
+        std::vector<stringSDF> edges = *__edges.data.str;
+
+        float max_content = 0;
+        for(int i= 0; i < contents.size(); i++){
+              if(contents[i] > max_content ) max_content = contents[i];
+        }
+        float scale = 0.0;
+        
+        //NOTE
+        // We must do a special thing with edges for string things. 
+        // This is a bad comment.  Should review all. 
+        {
+            plot->axis.xticks.push_back(0.0);
+            plot->labels.xlabels.push_back(" ");
+            for(int i_edge = 0; i_edge < edges.size(); i_edge++){
+                plot->axis.xticks.push_back(float(i_edge) + 1.0);
+                plot->labels.xlabels.push_back(edges[i_edge].characters);
+                
+            }
+            plot->axis.xticks.push_back(float(edges.size()));
+            plot->labels.xlabels.push_back(" ");
+        }
+
+        std::vector<float> _edges; 
+        for(int i = 0; i < plot->axis.xticks.size(); i++){
+            _edges.push_back( plot->axis.xticks[i] * plot_bound_width / (plot->axis.xticks[plot->axis.xticks.size() - 1] - plot->axis.xticks[0]) );
+        }
+
         float prev = 0;
         for(int y = 0; y < max_content * 1.20; y++){
             if ( max_content / (y - prev)  <= 20 || y == 0){
@@ -600,30 +668,35 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
                 else plot->labels.ylabels.push_back(to_string_with_precision(y));
             }
         }
-        plot->initialize = true;
+        //NOTE
+        //I hope this forces share not to really share.
+        // -- TKG Dec 2018
+        plot->initialize = false;
+
         int max_tick = plot->axis.yticks[plot->axis.yticks.size() - 1];
         scale = float(plot_bound_height) / float(max_tick);
-    }
-    else{
-        float max_tick = plot->axis.yticks[plot->axis.yticks.size() - 1];
-        scale = plot_bound_height / max_tick;
-    }
 
-    std::vector<float> _edges;
-    for(int i= 0; i < edges.size(); i++){
-        _edges.push_back(round( plot_bound_width * (edges[i] - edges[0]) / (max_edge - edges[0])));
+        for(int i= 0; i < contents.size(); i++){
+            int height  = int(scale * contents[i]) >= plot_bound_height ? plot_bound_height :  int(scale * contents[i]);
+            if (logy) height = int( plot_bound_height * log10(contents[i]) / log10(max_content * 1.50));
+            if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
+            else TGDrawRectangle(int(plot_bound_x + _edges[i] + (_edges[i+1] - _edges[i]) / 2), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
+        }
+        TGDrawTicks(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
+        //NOTE
+        //Custom draw bin names
+        {
+            for( int i = 0; i < plot->labels.xlabels.size(); i++){
+                if( i == 0 || i == plot->labels.xlabels.size() - 1){ continue; }
+                else{
+                    std::cout << "posx: " << int(_edges[i] + (_edges[i+1] - _edges[i]) / 2) << " " << _edges[i] << " " << _edges[i+1] << std::endl;
+                    TGDrawString( int(_edges[i] + (_edges[i+1] - _edges[i]) / 2), plot_bound_y - 15 , plot->labels.xlabels[i]);
+                }
+                
+            }
+        }
+        return 0;
     }
-    
-
-    for(int i= 0; i < contents.size(); i++){
-        int height  = int(scale * contents[i]) >= plot_bound_height ? plot_bound_height :  int(scale * contents[i]);
-        if (logy) height = int( plot_bound_height * log10(contents[i]) / log10(max_content * 1.50));
-        if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
-        else TGDrawRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
-    }
-    TGDrawTicks(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
-    TGDrawTickLabels(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
-		return 0;
 }
 
 void TGDrawTicks(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height){
@@ -821,19 +894,17 @@ TGHistogram TGConstructHistogram_str( std::vector<stringSDF> data, bool logy ){
     std::vector<int> unique_counts;
     for(int i = 0; i < data.size(); i++){
 
-        bool add_feature = false;
+        int add_feature = true;
         for(int j = 0 ; j < unique_str.size(); j++){
-            if( strcmp(data[i].characters, unique_str[j].characters) != 0 ){ 
-                add_feature = true;
+            if( strcmp(data[i].characters, unique_str[j].characters) == 0 ){ 
+                unique_counts[j] += 1;
+                add_feature = false;
                 break;
             }
-            else{
-                unique_counts[j] += 1;
-            }
         }
-        if( add_feature ){
+        if( add_feature || unique_counts.size() == 0){
             unique_str.push_back(data[i]);
-            unique_counts.push_back(0);
+            unique_counts.push_back(1);
         }
     }
 
