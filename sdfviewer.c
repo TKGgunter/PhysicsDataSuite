@@ -14,7 +14,6 @@
 
 
 //TODO
-//+ strings
 //+ button structs maybe ????
 //+ scroll through features
 //+ look out for bugs
@@ -650,7 +649,7 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
                 plot->labels.xlabels.push_back(edges[i_edge].characters);
                 
             }
-            plot->axis.xticks.push_back(float(edges.size()));
+            plot->axis.xticks.push_back(float(edges.size() + 1));
             plot->labels.xlabels.push_back(" ");
         }
 
@@ -680,7 +679,7 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
             int height  = int(scale * contents[i]) >= plot_bound_height ? plot_bound_height :  int(scale * contents[i]);
             if (logy) height = int( plot_bound_height * log10(contents[i]) / log10(max_content * 1.50));
             if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
-            else TGDrawRectangle(int(plot_bound_x + _edges[i] + (_edges[i+1] - _edges[i]) / 2), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
+            else TGDrawRectangle(int(round(plot_bound_x + _edges[i] + (_edges[i+1] - _edges[i]) / 2)), plot_bound_y, int(round(_edges[i+1] - _edges[i])), height);
         }
         TGDrawTicks(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
         //NOTE
@@ -689,10 +688,22 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
             for( int i = 0; i < plot->labels.xlabels.size(); i++){
                 if( i == 0 || i == plot->labels.xlabels.size() - 1){ continue; }
                 else{
-                    std::cout << "posx: " << int(_edges[i] + (_edges[i+1] - _edges[i]) / 2) << " " << _edges[i] << " " << _edges[i+1] << std::endl;
                     TGDrawString( int(_edges[i] + (_edges[i+1] - _edges[i]) / 2), plot_bound_y - 15 , plot->labels.xlabels[i]);
                 }
                 
+            }
+        }
+        //NOTE
+        //We are drawing y-axis labels right here for now because I am lazy.  Maybe this should use the default TGDrawTicks 
+        //maybe it should not.
+        {
+            float y_min = plot->axis.yticks[0];
+            float y_max = plot->axis.yticks[plot->axis.yticks.size() - 1];
+            XSetForeground(dis, gc, 0xffffffff);
+            for(int i_y = 0; i_y < plot->axis.yticks.size(); i_y++){
+                float _y = plot->axis.yticks[i_y];
+                int y_axis_tick = int ( round( plot_bound_height * (_y - y_min) / ( y_max - y_min ) ) ) + plot_bound_y;
+                TGDrawString( plot_bound_x - 25,  y_axis_tick, plot->labels.ylabels[i_y] );
             }
         }
         return 0;
