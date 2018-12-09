@@ -75,7 +75,6 @@ def SDFload_buffer(f, header, key):
     type_info = 0
 
     for i, tag in enumerate(header.type_tags):
-        print( bytes_before )
         if _index != -1:
             break
         if tag.name == key:
@@ -107,25 +106,28 @@ def SDFmembuffer_to_array(membuffer, sdf_type):
     else:
         return numpy.array(([membuffer._buffer[i:i+256].decode("utf-8") for i in range(0, len(membuffer._buffer), 256 )]))
 
-#TODO
-#Test Me !!!
 def SDFtoPandas(filename, columns=None):
     import pandas as pd
     f = SDFopen(filename)
     header = SDFloadHeader(f)
 
-    if type(column) == type(None):
+    if type(columns) == type(None):
         column = []
         for tt in header.type_tags:
             column.append(tt.name)
+
+    for i in range(len(columns)):
+        if type(columns[i]) == type("ASDF"):
+            columns[i] = columns[i].encode()
+
 
 
     #NOTE
     #loop through header of SDF file to determine is all elements of column are in the file
     map_c = {i:False for i in columns}
-    map_c_tt = {i:SDF_FLOAT for i in columns}
+    map_tt = {i:SDF_FLOAT for i in columns}
     for c in columns: 
-        for tt in header.type_tags
+        for tt in header.type_tags:
             if c == tt.name:
                 map_c[c] = True
                 map_tt[c] = tt.type_info
@@ -140,28 +142,29 @@ def SDFtoPandas(filename, columns=None):
             raise Exception(c + " Not found in file")
         else:
             _buffer = SDFload_buffer(f, header, c)
-            dic_predf[c] = SDFmembuffer_to_array(a, map_tt[c])
+            dic_predf[c.decode('utf-8')] = SDFmembuffer_to_array(_buffer, map_tt[c])
+            #print(c, map_tt[c])
+
     df = pd.DataFrame(dic_predf)
 
     f.close()
     return df
 
-#TODO
-#Test Me !!!
 def SDFaddtoPandas( df, filename, column ):
     import pandas as pd
     f = SDFopen(filename)
     header = SDFloadHeader(f)
+
+    if type(column) == type("ASFASFD"):
+        column = column.encode()
     
-    for tt in header.type_tags
+    for tt in header.type_tags:
         if column == tt.name:
             _buffer = SDFload_buffer(f, header, column)
-            _array = SDFmembuffer_to_array(a, tt.type_info)
+            _array = SDFmembuffer_to_array(_buffer, tt.type_info)
             break
-    #Note
-    #helpful hint maybe
-    #https://stackoverflow.com/questions/12555323/adding-new-column-to-existing-dataframe-in-python-pandas
-    df = df.assign(column=p.Series( _array ).values)
+
+    df[column.decode("utf-8")] =  _array 
 
     f.close()
     return df 
@@ -169,12 +172,21 @@ def SDFaddtoPandas( df, filename, column ):
 
 
 if __name__ == "__main__":
+    print("Progressing with general file opening test")
     f = SDFopen("test_compression_0.sdf")
     header = SDFloadHeader(f)
-    a = SDFload_buffer(f, header, b'name')
+    a = SDFload_buffer(f, header, b'age')
     print("n events", header.number_of_events)
-    b = SDFmembuffer_to_array(a, SDF_STR)
-    print( b )
+    b = SDFmembuffer_to_array(a, SDF_INT)
+    print( "age", b )
+    f.close()
+    print("File opening test completed")
+
+    print("Progressing with pandas test")
+    df = SDFtoPandas("test_compression_0.sdf", ["name", b"age"])
+    print("Data frame generated\n", df.head()) 
+    df = SDFaddtoPandas(df, "test_compression_0.sdf", "grade")
+    print("additional column added\n", df.head()) 
 
 
 
