@@ -107,6 +107,67 @@ def SDFmembuffer_to_array(membuffer, sdf_type):
     else:
         return numpy.array(([membuffer._buffer[i:i+256].decode("utf-8") for i in range(0, len(membuffer._buffer), 256 )]))
 
+#TODO
+#Test Me !!!
+def SDFtoPandas(filename, columns=None):
+    import pandas as pd
+    f = SDFopen(filename)
+    header = SDFloadHeader(f)
+
+    if type(column) == type(None):
+        column = []
+        for tt in header.type_tags:
+            column.append(tt.name)
+
+
+    #NOTE
+    #loop through header of SDF file to determine is all elements of column are in the file
+    map_c = {i:False for i in columns}
+    map_c_tt = {i:SDF_FLOAT for i in columns}
+    for c in columns: 
+        for tt in header.type_tags
+            if c == tt.name:
+                map_c[c] = True
+                map_tt[c] = tt.type_info
+                continue
+
+    dic_predf = {}
+    for c in map_c:
+        if map_c[c] != True:
+           #NOTE
+           #Idk if an exception is what I want to use might change later
+           # -- TKG Dec 8, 2018
+            raise Exception(c + " Not found in file")
+        else:
+            _buffer = SDFload_buffer(f, header, c)
+            dic_predf[c] = SDFmembuffer_to_array(a, map_tt[c])
+    df = pd.DataFrame(dic_predf)
+
+    f.close()
+    return df
+
+#TODO
+#Test Me !!!
+def SDFaddtoPandas( df, filename, column ):
+    import pandas as pd
+    f = SDFopen(filename)
+    header = SDFloadHeader(f)
+    
+    for tt in header.type_tags
+        if column == tt.name:
+            _buffer = SDFload_buffer(f, header, column)
+            _array = SDFmembuffer_to_array(a, tt.type_info)
+            break
+    #Note
+    #helpful hint maybe
+    #https://stackoverflow.com/questions/12555323/adding-new-column-to-existing-dataframe-in-python-pandas
+    df = df.assign(column=p.Series( _array ).values)
+
+    f.close()
+    return df 
+
+
+
 if __name__ == "__main__":
     f = SDFopen("test_compression_0.sdf")
     header = SDFloadHeader(f)
