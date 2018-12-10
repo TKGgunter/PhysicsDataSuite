@@ -35,6 +35,11 @@ enum TypeTag{
 
 struct stringSDF{
 		char characters[256];
+    stringSDF(){
+        for( auto i = 0; i < sizeof(characters); i++){
+            characters[i] = '\0';
+        }
+    }
 };
 
 typedef uint16_t float16;
@@ -48,7 +53,7 @@ struct tagHeaderSDF{
 struct headerSDF{
 		char ID[3] = {'T', 'D', 'F'};
 		uint8_t compression_flag= 1;
-		uint32_t start_buffer = 3 + 1 + 4 + 4 + 4;
+		uint32_t start_buffer = 3 + 1 + 4 + 4 + 4 + 256;
 		//NOTE:
 		//		CHECK FOR Endianess
 		//    union {
@@ -62,6 +67,7 @@ struct headerSDF{
 		uint32_t number_of_events = 0;
 		uint32_t number_of_features = 0; //32bytes is a little large don't yah think
 		std::vector<tagHeaderSDF> type_tags;
+    stringSDF notes;
 };	
 
 //Note:
@@ -347,6 +353,10 @@ void write_sdf_to_disk(std::string file_name, SerialDataFormat* sdf ){
 						f.write((char*)&type, sizeof(type));	
 						f.write((char*)&buffer_size, sizeof(buffer_size));	
 				}
+        //NOTE
+        //This is new. Needs to be tested.
+        // -- TKG Dec 10, 2018
+        f.write((char*)&sdf->header.notes.characters, sizeof(stringSDF));
 		}
 
 		////NOTE
@@ -415,6 +425,10 @@ headerSDF read_sdfheader_from_disk(std::fstream* f){
         free(feature_name);
     }
     header.type_tags = type_tags;
+    //NOTE
+    //Needs to be tested.
+    // --TKG Dec 10, 2018
+    f->read((char*)&header.notes.characters, sizeof(stringSDF));	
     return header;
 }
 
@@ -711,4 +725,16 @@ int TEST_compare_written_vs_loaded_compressed(){
     printf("test complete\n");
     return 0;
 }
+
+
+void TEST_notes_generation(){
+    SerialDataFormat sdf = TEST_generateSDF();
+    strcpy(sdf.header.notes.characters, "This is a test of the notes buffer. Yacady sax");
+    write_sdf_to_disk( "test_notes.sdf", &sdf );
+}
+
+
+
+
+
 
