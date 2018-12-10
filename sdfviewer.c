@@ -406,6 +406,7 @@ int main (int n_command_line_args, char** argv) {
 				}
 				XSetForeground(dis, gc, 0xffffffff);
 				TGDrawString(10, window_height - 50, file_name.c_str());
+				TGDrawString(175, window_height - 50, header.notes.characters);
 
 				{//Draw feature menu
 						int i = 0;
@@ -438,7 +439,7 @@ int main (int n_command_line_args, char** argv) {
 
         {//File stats
 				    XSetForeground(dis, gc, 0xffffffff);
-            TGDrawString(plot_bound_x + 5, plot_bound_y + plot_bound_height + 10, "number of entries: " + to_string_with_precision(header.number_of_events)  );
+            TGDrawString(plot_bound_x + 5, plot_bound_y + plot_bound_height + 15, "number of entries: " + to_string_with_precision(header.number_of_events)  );
         }
 
 
@@ -450,7 +451,6 @@ int main (int n_command_line_args, char** argv) {
         TGPlot plot;
         plot.initialize = false;
         
-				//SOME OF THESE ARE FAKE HISTOGRAMS
         if(plot_changed){
             for(unsigned int _i_feature = 0; _i_feature < active_features.size() ; _i_feature++){
                 //NOTE
