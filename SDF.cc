@@ -280,8 +280,9 @@ void update_buffers(SerialDataFormat* sdf){
 										temp_str.characters[i] = *it;
 										i++;
 								}
-                for( i; i < 256; i++){
+                while(i < 256){
                     temp_str.characters[i] = char(0);
+                    i++;
                 }
 						}
 						
@@ -418,9 +419,10 @@ headerSDF read_sdfheader_from_disk(std::fstream* f){
 }
 
 int get_tag_index(headerSDF* header, TypeTag type , std::string name){
-    for (int i = 0; i < header->type_tags.size(); i++){
+    for (unsigned int i = 0; i < header->type_tags.size(); i++){
         if( header->type_tags[i].name == name  && header->type_tags[i].type_info == type) return i;
     }
+    return 0;
 }
 
 std::vector<uint8_t> get_buffer_from_disk( std::fstream* f, tagHeaderSDF* tag, headerSDF* header){
@@ -429,7 +431,7 @@ std::vector<uint8_t> get_buffer_from_disk( std::fstream* f, tagHeaderSDF* tag, h
     int type_tag_index = get_tag_index(header, type, name);
     uint64_t offset   = header->start_buffer ;
 
-    for(int nth_feature = 0; nth_feature < header->type_tags.size(); nth_feature++){
+    for(unsigned int nth_feature = 0; nth_feature < header->type_tags.size(); nth_feature++){
         if ( header->type_tags[nth_feature].name == name ) break;
         offset += header->type_tags[nth_feature].buffer_size;
     }
@@ -575,7 +577,7 @@ SerialDataFormat read_sdf_from_disk(std::string file_name){
 		{
 				//Loop over features
 				int enumerate_it = -1;	
-				for(int i = 0; i != sdf.header.type_tags.size(); i++){
+				for(unsigned int i = 0; i != sdf.header.type_tags.size(); i++){
 
 						enumerate_it += 1; 
 						sdf.buffer.push_back(memblockSDF());
@@ -652,7 +654,7 @@ int TEST_compare_written_vs_loaded_noncompressed(){
     {
         SerialDataFormat sdf_1 = read_sdf_from_disk( "test_compression_0.sdf");
         if (sdf.buffer.size() != sdf_1.buffer.size()) printf("total number of buffers are not equal!!");
-        for( int i = 0;  i < sdf.buffer.size(); i++){
+        for( unsigned int i = 0;  i < sdf.buffer.size(); i++){
             if(sdf.buffer[i].buffer.size() != sdf_1.buffer[i].buffer.size()){
                 printf("feature \"%s\" does not have the same length between buffers! \t %lu %lu \n", sdf_1.header.type_tags[i].name.c_str(), sdf.buffer[i].buffer.size() , sdf_1.buffer[i].buffer.size());
             }
@@ -674,6 +676,7 @@ int TEST_compare_written_vs_loaded_noncompressed(){
         }
         
     }
+    return 0;
 }
 
 int TEST_compare_written_vs_loaded_compressed(){
@@ -684,7 +687,7 @@ int TEST_compare_written_vs_loaded_compressed(){
     {
         SerialDataFormat sdf_1 = read_sdf_from_disk( "test_compression_1.sdf");
         if (sdf.buffer.size() != sdf_1.buffer.size()) printf("total number of buffers are not equal!!");
-        for( int i = 0;  i < sdf.buffer.size(); i++){
+        for( unsigned int i = 0;  i < sdf.buffer.size(); i++){
             if(sdf.buffer[i].buffer.size() != sdf_1.buffer[i].buffer.size()){
                 printf("feature \"%s\" does not have the same length between buffers! \t %lu %lu \n", sdf_1.header.type_tags[i].name.c_str(), sdf.buffer[i].buffer.size() , sdf_1.buffer[i].buffer.size());
             }
@@ -706,5 +709,6 @@ int TEST_compare_written_vs_loaded_compressed(){
         }
     }
     printf("test complete\n");
+    return 0;
 }
 
