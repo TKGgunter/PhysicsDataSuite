@@ -36,7 +36,7 @@ enum TypeTag{
 struct stringSDF{
 		char characters[256];
     stringSDF(){
-        for( auto i = 0; i < sizeof(characters); i++){
+        for( unsigned int i = 0; i < sizeof(characters); i++){
             characters[i] = '\0';
         }
     }
