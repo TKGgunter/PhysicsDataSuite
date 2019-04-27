@@ -127,8 +127,8 @@ int main (int n_command_line_args, char** argv) {
 
     union FLOAT_32 _a = {.f32 = 32.32};
     auto a = half_from_float( _a.u32);
-    int r = 1e7 + 0;
-    //test_write( r );
+    int r = 1e3 + 0;
+    test_write( r );
     test_read( r );
     return 0;
 }
