@@ -10,7 +10,7 @@
 #include <dirent.h>
 
 
-#include "SDF.cc"
+#include "../SDF.cc"
 
 //  g++ sdf_add.c -o sdf_add -std=c++11 && ./sdf_add
 

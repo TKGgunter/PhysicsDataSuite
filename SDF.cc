@@ -42,7 +42,6 @@ struct stringSDF{
     }
 };
 
-typedef uint16_t float16;
 
 struct tagHeaderSDF{
 		std::string name;
@@ -169,93 +168,6 @@ std::array<uint8_t, sizeof(T)> to_bytes( const T* object )
     return bytes ;
 }
 
-float16 float32to16( float f32 ){
-		//Note:
-		//We are assuming that the float spect is 32bit.  On some platforms this is not true.
-		//However this is much less common on modern hardware so we should be ok.
-		float16 f16 = 0;
-		uint32_t f32_exponent = 0;
-		printf("\n");
-		for(int i= 0; i < 32; i++){
-				
-				if (i < 13) continue;
-
-				if (i >= 13 && i <= 22) f16 |= ( (*((uint32_t *)&f32) >> i) & (uint32_t)1 ) << i ;
-
-
-				if (i > 22 && i < 31){
-						f32_exponent |= ( (*((uint32_t *)&f32) >> i) & (uint32_t)1 ) << (i - 23);
-				}
-
-				if (i == 31){
-						uint32_t new_exponent = 0;
-						int temp = f32_exponent - 127;
-
-						if (abs(temp) > 15)	new_exponent = 2147483647;
-						
-						else new_exponent = uint32_t (temp + 15); //15 or 16 ???
-	
-						for(int j = 0; j < 5; j++){
-								f16 |= ( ( new_exponent >> j) & (uint32_t)1 ) << (j + 10) ;
-								//int temp = ( ( new_exponent >> j) & (uint32_t)1 ) ;
-								//std::cout << "temp " << temp << std::endl;
-						}	
-
-						//NOTE
-						//Adding sign bit	
-						f16 |= ( (*((uint32_t *)&f32) >> i) & (uint32_t)1 ) << 15 ;
-				}
-		}
-	
-    /*	
-		for (int i = 0; i < 16; i++){
-				int temp =  ( (*((uint32_t *)&f16) >> i) & (uint32_t)1 );
-				std::cout << "temp " << temp << " i " << i << std::endl; 
-		}
-    */
-		
-		return  f16;
-}
-float float16to32( float16 f16 ){
-		//Note:
-		//We are assuming that the float spect is 32bit.  On some platforms this is not true.
-		//However this is much less common on modern hardware so we should be ok.
-		uint32_t f32 = 0;
-		uint32_t f16_exponent = 0;
-		uint32_t f32_exponent = 0;
-		for(int i = 10; i < 15; i++){
-				f16_exponent |= ( ( f16 >> i) & (uint32_t)1 ) << (i - 10) ;
-		}
-		f32_exponent  = f16_exponent - 15 + 127;
-		for(int i= 0; i < 32; i++){
-				if (i < 13){
-						f32 |= (uint32_t)1 << i;
-						continue;
-				}
-				else if (i >= 13 && i < 23){
-						f32 |= ((f16 >> (i - 13)) & 1) <<  i;
-				}	
-				else if (i>= 23 && i < 31){
-				}
-				else if ( i == 31){
-						for (int j = 0; j < 8; j++){
-								f32 |= ( (f32_exponent >> j) & (uint32_t)1) <<  (i - 8 + j);
-                /*
-								int temp = ( (f32_exponent >> j) & (uint32_t)1);
-								std::cout << "\t\t ASDF " << temp << std::endl;
-                */
-						}
-						f32 |= ((f16 >> 15) & 1) << i;
-				}
-				
-				
-		}
-		/*for (int i = 0; i < 32; i++){
-				int temp =  ( (f32 >> i) & (uint32_t)1 );
-				std::cout << "f32 " << temp << " i " << i << std::endl; 
-		}*/
-		return *((float *)&f32);
-}
 
 
 void update_buffers(SerialDataFormat* sdf){

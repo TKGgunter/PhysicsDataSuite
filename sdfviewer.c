@@ -13,10 +13,6 @@
 */
 
 
-//TODO
-//+ button structs maybe ????
-//+ scroll through features
-//+ look out for bugs
 
 /* include the X library headers */
 #include <X11/Xlib.h>
