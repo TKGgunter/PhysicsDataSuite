@@ -162,9 +162,11 @@ bool TGInRectangle(int x, int y, int x_rect, int y_rect, int w_rect, int h_rect)
 int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height, bool fill, TGPlot* plot = NULL, bool logy = false);
 void TGDrawTicks(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height);
 void TGDrawTickLabels(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot_bound_width, int plot_bound_height);
-TGHistogram TGConstructHistogram_float( std::vector<float> data, float min=-1.0, float max=-1.0, bool logy=false );
-TGHistogram TGConstructHistogram_int( std::vector<int> data, int min=-1, int max=-1, bool logy=false );
-TGHistogram TGConstructHistogram_str( std::vector<stringSDF> data, bool logy=false );
+TGHistogram TGConstructHistogram_float( std::vector<float> data, float min=-1.0, float max=-1.0);
+TGHistogram TGConstructHistogram_int( std::vector<int> data, int min=-1, int max=-1);
+TGHistogram TGConstructHistogram_str( std::vector<stringSDF> data);
+float TGconvert_log(float x, float max);
+
 
 //NOTE
 //copied from the solution on 
@@ -481,8 +483,8 @@ int main (int n_command_line_args, char** argv) {
                     TGHistogram histogram;
                     if ( tag.type_info == FLOAT ) {
                         std::vector<float> data((float*)&_data[0],(float*)&_data[0] + _data.size() / 4);
-                        if( share && plot.initialize == true ) histogram = TGConstructHistogram_float(data, plot.axis.xticks[0], plot.axis.xticks[ plot.axis.xticks.size() - 1 ], logy);
-                        else histogram = TGConstructHistogram_float(data, 0, 0, logy);
+                        if( share && plot.initialize == true ) histogram = TGConstructHistogram_float(data, plot.axis.xticks[0], plot.axis.xticks[ plot.axis.xticks.size() - 1 ]);
+                        else histogram = TGConstructHistogram_float(data, 0, 0);
                     }
                     else if ( tag.type_info == INT ) {
                         std::vector<int> data((int*)&_data[0],(int*)&_data[0] + _data.size() / 4);
@@ -493,7 +495,7 @@ int main (int n_command_line_args, char** argv) {
                         
                         std::vector<stringSDF> data((stringSDF*)&_data[0], (stringSDF*)&_data[0] + _data.size() / sizeof(stringSDF));
                         if( share && plot.initialize == true ) printf("String types can not share plots at this point. \n  -TKG Dec 2018\n");
-                        else histogram = TGConstructHistogram_str( data, logy );
+                        else histogram = TGConstructHistogram_str( data );
                     }
                     else{
                         printf("Type Unknown\n");
@@ -591,11 +593,26 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
                 plot->labels.xlabels.push_back(to_string_with_precision(edges[i_edge]));
             }
             float prev = 0;
+            int _y_index = 0;
+            int _y_max = 0;
+            
             for(int y = 0; y < max_content * 1.20; y++){
                 if ( max_content / (y - prev)  <= 20 || y == 0){
                     prev = y;
+                    _y_max += 1;
+                }
+            }
+
+            prev = 0;
+            for(int y = 0; y < max_content * 1.20; y++){
+                if ( max_content / (y - prev)  <= 20 || y == 0){
+                    _y_index += 1;
+                    prev = y;
                     plot->axis.yticks.push_back(y);
-                    if(logy) plot->labels.ylabels.push_back(to_string_with_precision( pow( 10, float(y) / float(max_content * 1.20) * log10(max_content * 1.50))  ));
+                    if(logy){ 
+                        float _max_content = float(max_content);
+                        plot->labels.ylabels.push_back(to_string_with_precision( pow(10.0, float(_y_index) / float(_y_max) * log10(_max_content * 1.2)) ));
+                    }
                     else plot->labels.ylabels.push_back(to_string_with_precision(y));
                 }
             }
@@ -616,7 +633,10 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
 
         for(int i= 0; i < contents.size(); i++){
             int height  = int(scale * contents[i]) >= plot_bound_height ? plot_bound_height :  int(scale * contents[i]);
-            if (logy) height = int( plot_bound_height * log10(contents[i]) / log10(max_content * 1.50));
+            if (logy) { 
+                float _max_content = float(max_content);
+                height = int( TGconvert_log(contents[i], _max_content ) * plot_bound_height );
+            }
             if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
             else TGDrawRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
         }
@@ -625,6 +645,8 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
         return 0;
     }
     else{
+        //NOTE this is for string data
+        //TODO
         TGPlot _plot;
         std::vector<stringSDF> edges = *__edges.data.str;
 
@@ -655,11 +677,24 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
         }
 
         float prev = 0;
+        int _y_index = 0;
+        int _y_max = 0;
         for(int y = 0; y < max_content * 1.20; y++){
             if ( max_content / (y - prev)  <= 20 || y == 0){
                 prev = y;
+                _y_max += 1;
+            }
+        }
+        prev = 0;
+        for(int y = 0; y < max_content * 1.20; y++){
+            if ( max_content / (y - prev)  <= 20 || y == 0){
+                _y_index += 1;
+                prev = y;
                 plot->axis.yticks.push_back(y);
-                if(logy) plot->labels.ylabels.push_back(to_string_with_precision( pow( 10, float(y) / float(max_content * 1.20) * log10(max_content * 1.50))  ));
+                if(logy){ 
+                    float _max_content = float(max_content);
+                    plot->labels.ylabels.push_back(to_string_with_precision( pow(10.0, float(_y_index) / float(_y_max) * log10(_max_content * 1.2)) ));
+                }
                 else plot->labels.ylabels.push_back(to_string_with_precision(y));
             }
         }
@@ -673,7 +708,7 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
 
         for(int i= 0; i < contents.size(); i++){
             int height  = int(scale * contents[i]) >= plot_bound_height ? plot_bound_height :  int(scale * contents[i]);
-            if (logy) height = int( plot_bound_height * log10(contents[i]) / log10(max_content * 1.50));
+            if (logy) height = int( plot_bound_height * TGconvert_log(contents[i], max_content));
             if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
             else TGDrawRectangle(int(round(plot_bound_x + _edges[i] + (_edges[i+1] - _edges[i]) / 2)), plot_bound_y, int(round(_edges[i+1] - _edges[i])), height);
         }
@@ -746,7 +781,7 @@ void TGDrawTickLabels(TGPlot* plot, int plot_bound_x, int plot_bound_y, int plot
     
 }
 
-TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, float max, bool logy ){
+TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, float max){
     float mean = 0.0;
     float standard_deviation = 0.0;
     bool min_max_set = false;
@@ -783,14 +818,15 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
     //If so use std to determine min and max range 
     //
     if (min_max_set == false){
-        if ( logy ) {
-            //if ( max > (2*standard_deviation + mean) )  max = 3*standard_deviation + mean;
-            //if ( min < (-2*standard_deviation + mean) ) min = -2*standard_deviation + mean;
-        }
-        else{
-            if ( max > (1*standard_deviation + mean) )  max = 1*standard_deviation + mean;
-            if ( min < (-1*standard_deviation + mean) ) min = -1*standard_deviation + mean;
-        }
+        //if ( logy ) {
+        //    //if ( max > (2*standard_deviation + mean) )  max = 3*standard_deviation + mean;
+        //    //if ( min < (-2*standard_deviation + mean) ) min = -2*standard_deviation + mean;
+        //    printf("TODO");
+        //}
+        //else{
+        //    if ( max > (2*standard_deviation + mean) )  max = 2*standard_deviation + mean;
+        //    if ( min < (-2*standard_deviation + mean) ) min = -2*standard_deviation + mean;
+        //}
     }
     float bin_size = 0;
     bin_size = fabs( max - min ) / 20;
@@ -824,7 +860,7 @@ TGHistogram TGConstructHistogram_float( std::vector<float> data, float min, floa
     return rt;
 }
 
-TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max, bool logy ){
+TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max){
   //TODO
   //Update this function with everthing we learned from the TGConstructionHistogram_float
     float mean = 0;
@@ -860,12 +896,12 @@ TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max, b
 
     //NOTE use mean or some statistic to pick better bin
     if (min_max_set == false){
-        if ( max > ( 1*standard_deviation + mean) )  max = round(1*standard_deviation + mean);
-        if ( min < (-1*standard_deviation + mean) ) min = round(-1*standard_deviation + mean);
-        if (min + 20 != max) {
-           min = mean - 10;
-           max = max + 10;
-        }
+        //if ( max > ( 1*standard_deviation + mean) )  max = round(1*standard_deviation + mean);
+        //if ( min < (-1*standard_deviation + mean) ) min = round(-1*standard_deviation + mean);
+        //if (min + 20 != max) {
+        //   min = mean - 10;
+        //   max = max + 10;
+        //}
     }
     
     float bin_size = 0;
@@ -891,7 +927,7 @@ TGHistogram TGConstructHistogram_int( std::vector<int> data, int min, int max, b
     return rt;
 }
 
-TGHistogram TGConstructHistogram_str( std::vector<stringSDF> data, bool logy ){
+TGHistogram TGConstructHistogram_str( std::vector<stringSDF> data){
     //Loop over data
     // keep a growing array for unique strings
     // as we loop count the data associated with each unique string
@@ -914,6 +950,7 @@ TGHistogram TGConstructHistogram_str( std::vector<stringSDF> data, bool logy ){
             unique_counts.push_back(1);
         }
     }
+
 
 
     TGHistogram rt;
@@ -1053,6 +1090,9 @@ void set_icon( TGBmp bmp )
 
 
 
+float TGconvert_log(float x, float max){
+    return log10(x)/log10(max*1.20);
+}
 
 
 
