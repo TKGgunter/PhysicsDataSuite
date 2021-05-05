@@ -622,7 +622,7 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
         }
         else{
             float max_tick = plot->axis.yticks[plot->axis.yticks.size() - 1];
-            scale = plot_bound_height / max_tick;
+            scale = float(plot_bound_height) / float(max_tick);
         }
 
         std::vector<float> _edges;
@@ -640,6 +640,7 @@ int TGDrawHistogram( std::vector<int> contents, HistEdges __edges, int plot_boun
             if (fill) TGFillRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
             else TGDrawRectangle(int(plot_bound_x + _edges[i]), plot_bound_y, int(_edges[i+1] - _edges[i]), height);
         }
+
         TGDrawTicks(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
         TGDrawTickLabels(plot, plot_bound_x, plot_bound_y, plot_bound_width, plot_bound_height);
         return 0;

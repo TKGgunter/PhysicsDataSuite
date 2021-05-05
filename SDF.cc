@@ -529,6 +529,7 @@ SerialDataFormat TEST_generateSDF(){
     sdf.vars_str    = &string_map;
 
     float_map["grade"]  = 0.0;
+    float_map["height(cm)"]  = 0.0;
     int_map["age"]      = 0;
     string_map["name"]  = "";
 
@@ -540,12 +541,14 @@ SerialDataFormat TEST_generateSDF(){
     int cursor = 0;
     for( int i = 0 ; i < 10000; i++ ){
         float random = static_cast <float> (rand()) / static_cast <float> (RAND_MAX) ;
-        float_map["grade"] = random * 100.0 * grade_baseline[cursor];
+        float_map["grade"] = (1.0 - random*random) * 100.0 * grade_baseline[cursor];
+        float_map["height(cm)"] = (0.5 + 0.5*random*(random + 0.25 ) ) * 120.0;
         int_map["age"]     = 20 + i / 100;
         string_map["name"] = names[cursor];
 
         if( i < 10){
             printf( "grade %f\t\t", float_map["grade"]);
+            printf( "height %f\t\t", float_map["height(cm)"]);
             printf( "age %d\t\t", int_map["age"]);
             printf( "name %s\n", string_map["name"].c_str());
         }
